@@ -1,0 +1,16 @@
+{
+    "name": "webtourismus/seasonal_paragraphs",
+    "description": "Allows editors to show and hide content on the frontend based on a yearly recurring schedule.",
+    "type": "drupal-module",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Reinhard Hutter",
+            "email": "reinhard.hutter@webtourismus.at"
+        }
+    ],
+    "require": {
+        "drupal/core": "^10",
+        "drupal/paragraphs": "^1.15"
+    }
+}

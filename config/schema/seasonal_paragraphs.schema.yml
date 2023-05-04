@@ -1,0 +1,13 @@
+system.site:
+  type: config_object
+  mapping:
+    season:
+      type: mapping
+      label: 'Summer season'
+      mapping:
+        from:
+          type: string
+          label: 'Summer season start'
+        to:
+          type: string
+          label: 'Summer season end'

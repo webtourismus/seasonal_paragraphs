@@ -1,0 +1,4 @@
+services:
+  seasonal_paragraphs.season:
+    class: Drupal\seasonal_paragraphs\Season
+    arguments: ['@config.factory', '@module_handler']

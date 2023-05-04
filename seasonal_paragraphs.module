@@ -1,0 +1,263 @@
+<?php
+
+use Drupal\Core\Cache\Cache;
+use Drupal\Core\Datetime\DrupalDateTime;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Entity\FieldableEntityInterface;
+use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Field\FieldStorageDefinitionInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\paragraphs\Entity\Paragraph;
+use Drupal\seasonal_paragraphs\Season;
+
+/**
+ * Implements hook_entity_base_field_info().
+ */
+function seasonal_paragraphs_entity_base_field_info(EntityTypeInterface $entity_type): array {
+  if ($entity_type->id() != 'paragraph') {
+    return [];
+  }
+  $fields = [];
+  $fields[Season::FIELDNAME] = BaseFieldDefinition::create('list_string')
+    ->setLabel(t('Only visible in'))
+    ->setTranslatable(FALSE)
+    ->setRevisionable(TRUE)
+    ->setSettings([
+      'allowed_values' => [],
+      'allowed_values_function' => 'seasonal_paragraphs_allowed_values'
+    ])
+    ->setRequired(FALSE)
+    ->setDisplayConfigurable('form', TRUE)
+    ->setDisplayOptions('form', [
+      'region' => 'content',
+      'type' => 'options_select',
+    ])
+    ->setDisplayConfigurable('view', TRUE)
+    ->setDisplayOptions('view', [
+      'label' => 'hidden',
+      'type' => 'string',
+      'weight' => 0,
+      'region' => 'hidden',
+    ]);
+  return $fields;
+}
+
+
+/**
+ * Returns the allowed values for seasonal visibility.
+ *
+ * @param \Drupal\Core\Field\FieldStorageDefinitionInterface $definition
+ * @param \Drupal\Core\Entity\FieldableEntityInterface|null $entity
+ * @param bool $cacheable
+ *
+ * @return array
+ *
+ * @see callback_allowed_values_function()
+ */
+function seasonal_paragraphs_allowed_values(FieldStorageDefinitionInterface $definition, FieldableEntityInterface $entity = NULL, bool &$cacheable = TRUE): array {
+  /** @var $season Season */
+  $season = \Drupal::service('seasonal_paragraphs.season');
+  return $season->allowedValuesCallback($definition, $entity, $cacheable);
+}
+
+/**
+ * Alter the label of "_none" value for seasonal visibility.
+ */
+function seasonal_paragraphs_options_list_alter(array &$options, array $context) {
+  if ($context['fieldDefinition']->getName() == Season::FIELDNAME && $context['entity'] instanceof Paragraph) {
+    if (array_key_exists('_none', $options)) {
+      $options['_none'] = t('visible all year round');
+    }
+  }
+}
+
+function seasonal_paragraphs_field_widget_complete_form_alter(&$field_widget_complete_form, FormStateInterface $form_state, $context) {
+  if ($context['items']?->getName() == Season::FIELDNAME &&
+    $context['items']?->getEntity() instanceof Paragraph &&
+    isset($field_widget_complete_form['widget']['#title'])
+  ) {
+    unset($field_widget_complete_form['widget']['#title']);
+  }
+}
+
+/**
+ * Implements hook_form_alter() for system_site_information_settings.
+ */
+function seasonal_paragraphs_form_system_site_information_settings_alter(&$form, $form_state, $form_id) {
+  $config = \Drupal::configFactory()->getEditable('system.site');
+  $form['summer_season'] = [
+    '#type' => 'details',
+    '#title' => t('Summer season'),
+    '#open' => TRUE,
+    '#tree' => TRUE,
+  ];
+  $form['summer_season']['inline_container'] = [
+    '#type' => 'container',
+    '#attributes' => [
+      'class' => ['container-inline']
+    ]
+  ];
+  $form['summer_season']['inline_container']['from'] = [
+    '#type' => 'datetime',
+    '#title' => t('Start date'),
+    '#default_value' => new DrupalDateTime($config->get('summer_season.from') ?? '2000-04-01', 'Europe/Vienna'),
+    '#date_date_element' => 'date',
+    '#date_time_element' => 'none',
+    '#date_timezone' => 'Europe/Vienna',
+    '#required' => TRUE,
+    '#parents' => ['summer_season', 'from'],
+  ];
+  $form['summer_season']['inline_container']['to'] = [
+    '#type' => 'datetime',
+    '#title' => t('End date'),
+    '#default_value' => new DrupalDateTime($config->get('summer_season.to') ?? '2000-09-30', 'Europe/Vienna'),
+    '#date_date_element' => 'date',
+    '#date_time_element' => 'none',
+    '#date_timezone' => 'Europe/Vienna',
+    '#required' => TRUE,
+    '#parents' => ['summer_season', 'to'],
+  ];
+  $form['summer_season']['help'] = [
+    '#type' => 'inline_template',
+    '#template' => '<div class="form-item__description">{{ helptext }}</div>',
+    '#context' => [
+      'helptext' => t('End date must be greater than start date. The year does not matter (the season is repeated every year), but start date and end date must be in the same year.')
+    ]
+  ];
+
+  $form['#validate'][] = 'seasonal_paragraphs_site_settings_validate';
+  $form['#submit'][] = 'seasonal_paragraphs_site_settings_submit';
+}
+
+/**
+ * Stores start and end date for a yearly recurring summer season to system.site config settings.
+ *
+ * @param $form
+ * @param \Drupal\Core\Form\FormStateInterface $form_state
+ *
+ * @return void
+ */
+function seasonal_paragraphs_site_settings_submit(&$form, FormStateInterface $form_state ): void {
+  \Drupal::service('config.factory')
+    ->getEditable('system.site')
+    ->set('summer_season.from', $form_state->getValue(['summer_season', 'from'])->format('Y-m-d'))
+    ->set('summer_season.to', $form_state->getValue(['summer_season', 'to'])->format('Y-m-d'))
+    ->save();
+}
+
+/**
+ * Validates start and end date for a yearly recurring summer season.
+ *
+ * @param $form
+ * @param \Drupal\Core\Form\FormStateInterface $form_state
+ *
+ * @return void
+ */
+function seasonal_paragraphs_site_settings_validate(&$form, FormStateInterface $form_state ): void {
+  $from = $form_state->getValue(['summer_season', 'from']);
+  $to = $form_state->getValue(['summer_season', 'to']);
+  if (empty($from)) {
+    $form_state->setErrorByName('summer_season][from', t('Summer season start must not be empty.'));
+  }
+  if (empty($to)) {
+    $form_state->setErrorByName('summer_season][to', t('Summer season end must not be empty.'));
+  }
+
+  if ($from >= $to) {
+    $form_state->setErrorByName('summer_season', t('Summer season end must be after summer season start.'));
+  }
+  if ($from->format('Y') !== $to->format('Y')) {
+    $form_state->setErrorByName('summer_season', t('Summer seasons must start and end in the same year.'));
+  }
+}
+
+/**
+ * Implements hook_install().
+ */
+function seasonal_paragraphs_install(): void{
+  \Drupal::service('config.factory')
+    ->getEditable('system.site')
+    ->set('summer_season.from', '2000-04-01')
+    ->set('summer_season.to', '2000-09-30')
+    ->save(TRUE);
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function seasonal_paragraphs_uninstall(): void{
+  $config = \Drupal::configFactory()->getEditable('system.site');
+  $config->clear('summer_season');
+  $config->save(TRUE);
+}
+
+/**
+ * Implements hook_cron().
+ */
+function seasonal_paragraphs_cron() {
+  $lastPurge = \Drupal::state()->get('seasonal_paragraphs.last_purge', '0');
+  $lastPurge = \DateTime::createFromFormat('U', $lastPurge);
+  $today = new \DateTime();
+  $today->setTime(0,0,0, 0);
+
+  $config = \Drupal::configFactory()->get('system.site');
+  $from = \DateTime::createFromFormat('!Y-m-d', $config->get('summer_season.from'));
+  $from->setDate($today->format('Y'), $from->format('m'), $from->format('d'));
+  $to = \DateTime::createFromFormat('!Y-m-d', $config->get('summer_season.to'));
+  $to->setDate($today->format('Y'), $to->format('m'), $to->format('d'));
+
+  if (
+    ($today >= $from && $lastPurge < $from) ||
+    ($today > $to && $lastPurge < $to)
+  ) {
+    Cache::invalidateTags(Season::getExpiringCacheTags());
+    \Drupal::state()->set('seasonal_paragraphs.last_purge', time());
+  }
+}
+
+
+function seasonal_paragraphs_entity_build_defaults_alter(array &$build, EntityInterface $entity, $view_mode) {
+  if (!($entity instanceof Paragraph)) {
+    return;
+  }
+  if ($entity->get(Season::FIELDNAME)->isEmpty()) {
+    return;
+  }
+  /** @var $season Season */
+  $season = \Drupal::service('seasonal_paragraphs.season');
+  $build['#cache']['tags'] = Cache::mergeTags($build['#cache']['tags'], $season->getCacheTags());
+
+  if (\Drupal::service('router.admin_context')->isAdminRoute()) {
+    return;
+  }
+
+  if ($entity->get(Season::FIELDNAME)->value != $season->getCurrentSeason() || !$entity->isPublished()) {
+    $build['#access'] = FALSE;
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_presave().
+ */
+function landle_node_presave(EntityInterface $entity) {
+  /** * @var Node $entity */
+  $HERO_PARAGRAPH_FIELDNAME = 'field_hero';
+  if (!$entity->hasField($HERO_PARAGRAPH_FIELDNAME)) {
+    return;
+  }
+  if ($entity->get($HERO_PARAGRAPH_FIELDNAME)->isEmpty()) {
+    return;
+  }
+  $seasonalParagraphs = [];
+  foreach ($entity->get($HERO_PARAGRAPH_FIELDNAME) as $field) {
+    $paragraph = $field->entity;
+    if ($paragraph->get(Season::FIELDNAME)->isEmpty()) {
+      return;
+    }
+    $seasonalParagraphs[$paragraph->get(Season::FIELDNAME)->value] = TRUE;
+  }
+  if (count($seasonalParagraphs) == 1) {
+    \Drupal::messenger()->addWarning(t('When using seasonal hero images, there should be at least one hero image for every season.'));
+  }
+}
