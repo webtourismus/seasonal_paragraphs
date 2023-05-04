@@ -59,7 +59,7 @@ msgstr "Sommersaison Startdatum und Enddatum müssen im selben Jahr liegen."
 
 #: modules/custom/seasonal_paragraphs/seasonal_paragraphs.module:247
 msgid "When using seasonal hero images, there should be at least one hero image for every season."
-msgstr ""
+msgstr "Falls saisonale Banner verwendet werden, dann sollte für jede Saison mindestens ein Banner erstellt werden."
 
 #: modules/custom/seasonal_paragraphs/seasonal_paragraphs.info.yml:0
 msgid "Seasonal paragraphs"
