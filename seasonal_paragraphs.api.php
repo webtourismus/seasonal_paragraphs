@@ -16,11 +16,9 @@ use Drupal\Core\Field\FieldStorageDefinitionInterface;
  * @see \Drupal\seasonal_paragraphs\Season::getCurrentSeason()
  */
 function hook_seasonal_paragraphs_alter_current_season(string &$currentSeason): void {
-  /*
   if ((new \DateTime())->format('m-d') == '12-24') {
     $currentSeason = 'CHRISTMAS';
   }
-  */
 }
 
 /**
@@ -34,9 +32,7 @@ function hook_seasonal_paragraphs_alter_current_season(string &$currentSeason): 
  * @see seasonal_paragraphs_allowed_values()
  */
 function hook_seasonal_paragraphs_alter_available_seasons(array &$options, FieldStorageDefinitionInterface $definition, FieldableEntityInterface $entity = NULL, bool &$cacheable = TRUE): void {
-  /*
   $options[] = ['CHRISTMAS' => t('Merry christmas')];
-  */
 }
 
 /**

@@ -1,8 +1,9 @@
 name: Seasonal paragraphs
 type: module
-description: Allows editors to hide parts of content based on summer/winter season.
+description: Allows editors to hide paragraphs based on summer/winter season.
 package: Paragraphs
 core_version_requirement: ^10
+version: 1.0.2
 dependencies:
   - drupal:datetime
   - drupal:options
