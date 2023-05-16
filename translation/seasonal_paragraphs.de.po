@@ -58,8 +58,8 @@ msgid "Summer seasons must start and end in the same year."
 msgstr "Sommersaison Startdatum und Enddatum müssen im selben Jahr liegen."
 
 #: modules/custom/seasonal_paragraphs/seasonal_paragraphs.module:247
-msgid "When using seasonal hero images, there should be at least one hero image for every season."
-msgstr "Falls saisonale Banner verwendet werden, dann sollte für jede Saison mindestens ein Banner erstellt werden."
+msgid "@entity > @field: When using seasonal paragraphs, there should be at least one paragraph for every season."
+msgstr "@entity > @field: Falls saisonale Inhalte verwendet werden, dann sollte für jede Saison mindestens ein Element erstellt werden."
 
 #: modules/custom/seasonal_paragraphs/seasonal_paragraphs.info.yml:0
 msgid "Seasonal paragraphs"

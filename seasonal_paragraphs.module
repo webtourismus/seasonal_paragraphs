@@ -2,6 +2,7 @@
 
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Datetime\DrupalDateTime;
+use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\FieldableEntityInterface;
@@ -239,25 +240,42 @@ function seasonal_paragraphs_entity_build_defaults_alter(array &$build, EntityIn
 
 /**
  * Implements hook_ENTITY_TYPE_presave().
+ *
+ * This is a soft sanity check, aiming to help editors.
  */
-function landle_node_presave(EntityInterface $entity) {
-  /** * @var Node $entity */
-  $HERO_PARAGRAPH_FIELDNAME = 'field_hero';
-  if (!$entity->hasField($HERO_PARAGRAPH_FIELDNAME)) {
+function seasonal_paragraphs_entity_presave(EntityInterface $entity) {
+  if (!($entity instanceof ContentEntityInterface)) {
     return;
   }
-  if ($entity->get($HERO_PARAGRAPH_FIELDNAME)->isEmpty()) {
+  $fieldsToCheck = \Drupal::config('seasonal_paragraphs.config')->get('entity_field_sanity_check');
+  if (empty($fieldsToCheck)) {
     return;
   }
-  $seasonalParagraphs = [];
-  foreach ($entity->get($HERO_PARAGRAPH_FIELDNAME) as $field) {
-    $paragraph = $field->entity;
-    if ($paragraph->get(Season::FIELDNAME)->isEmpty()) {
-      return;
+  foreach ($fieldsToCheck as $check) {
+    list($entityType, $fieldToCheck) = explode(':', $check);
+    /** * @var Node $entity */
+    if ($entity->getEntityTypeId() != $entityType) {
+      continue;
     }
-    $seasonalParagraphs[$paragraph->get(Season::FIELDNAME)->value] = TRUE;
-  }
-  if (count($seasonalParagraphs) == 1) {
-    \Drupal::messenger()->addWarning(t('When using seasonal hero images, there should be at least one hero image for every season.'));
+    if (!$entity->hasField($fieldToCheck)) {
+      continue;
+    }
+    if ($entity->get($fieldToCheck)->isEmpty()) {
+      continue;
+    }
+    $seasonalParagraphs = [];
+    foreach ($entity->get($fieldToCheck) as $field) {
+      $paragraph = $field->entity;
+      if ($paragraph->get(Season::FIELDNAME)->isEmpty()) {
+        continue 2;
+      }
+      $seasonalParagraphs[$paragraph->get(Season::FIELDNAME)->value] = TRUE;
+    }
+    if (count($seasonalParagraphs) == 1) {
+      \Drupal::messenger()->addWarning(
+        t('@entity > @field: When using seasonal paragraphs, there should be at least one paragraph for every season.',
+        ['@entity' => $entity->label() ?? $entity->getEntityType()->getLabel(), '@field'=> $entity->get($fieldToCheck)->getFieldDefinition()->getLabel()])
+      );
+    }
   }
 }
