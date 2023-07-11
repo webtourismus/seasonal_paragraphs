@@ -200,7 +200,7 @@ function seasonal_paragraphs_cron() {
   $lastPurge = \Drupal::state()->get('seasonal_paragraphs.last_purge', '0');
   $lastPurge = \DateTime::createFromFormat('U', $lastPurge);
   $today = new \DateTime();
-  $today->setTime(0,0,0, 0);
+  $today->setTime(0,0,0,0);
 
   $config = \Drupal::configFactory()->get('system.site');
   $from = \DateTime::createFromFormat('!Y-m-d', $config->get('summer_season.from'));

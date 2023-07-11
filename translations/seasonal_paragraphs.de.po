@@ -89,3 +89,14 @@ msgstr "Sommer"
 msgid "winter"
 msgstr "Winter"
 
+msgid "Published"
+msgstr "veröffentlicht"
+
+msgid "visible all year round"
+msgstr "sichtbar über das ganze Jahr"
+
+msgid "only visible in summer"
+msgstr "nur im Sommer sichtbar"
+
+msgid "only visible in winter"
+msgstr "nur im Winter sichtbar"
