@@ -62,12 +62,12 @@ msgid "@entity > @field: When using seasonal paragraphs, there should be at leas
 msgstr "@entity > @field: Falls saisonale Inhalte verwendet werden, dann sollte für jede Saison mindestens ein Element erstellt werden."
 
 #: modules/custom/seasonal_paragraphs/seasonal_paragraphs.info.yml:0
-msgid "Seasonal paragraphs"
-msgstr "Saisonale Seitenabschnitte"
+msgid "Seasonal content"
+msgstr "Saisonale Inhalte"
 
 #: modules/custom/seasonal_paragraphs/seasonal_paragraphs.info.yml:0
-msgid "Allows editors to hide parts of content based on summer/winter season."
-msgstr "Erlaubt Redakteuren, einzele Seitenabschnitte basierend auf der Sommer-/Wintersaion zu verstecken."
+msgid "Allows editors to hide paragraphs and blocks based on summer/winter season."
+msgstr "Erlaubt Redakteuren, einzele Seitenabschnitte und Blöcke basierend auf der Sommer-/Wintersaion zu verstecken."
 
 #: modules/custom/seasonal_paragraphs/seasonal_paragraphs.info.yml:0
 msgid "Paragraphs"
