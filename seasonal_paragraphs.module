@@ -13,6 +13,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\Template\Attribute;
 use Drupal\paragraphs\Entity\Paragraph;
 use Drupal\seasonal_paragraphs\Season;
 
@@ -202,7 +203,7 @@ function seasonal_paragraphs_uninstall(): void{
 /**
  * Implements hook_cron().
  */
-function seasonal_paragraphs_cron() {
+function seasonal_paragraphs_cron(): void {
   $lastPurge = \Drupal::state()->get('seasonal_paragraphs.last_purge', '0');
   $lastPurge = \DateTime::createFromFormat('U', $lastPurge);
   $today = new \DateTime();
@@ -224,7 +225,7 @@ function seasonal_paragraphs_cron() {
 }
 
 
-function seasonal_paragraphs_entity_build_defaults_alter(array &$build, EntityInterface $entity, $view_mode) {
+function seasonal_paragraphs_entity_build_defaults_alter(array &$build, EntityInterface $entity, $view_mode): void {
   if (!($entity instanceof Paragraph)) {
     return;
   }
@@ -256,7 +257,7 @@ function seasonal_paragraphs_block_access(Block $block, $operation, AccountInter
     'uuid' => $block->getPlugin()->getDerivativeId()
   ]);
   $entity = reset($entities);
-  if (!($entity instanceof BlockContent) || $entity->get(Season::FIELDNAME)->isEmpty()) {
+  if (!($entity instanceof BlockContent) || ($entity->get(Season::FIELDNAME)?->isEmpty() ?? TRUE)) {
     return AccessResult::neutral();
   }
 
@@ -309,10 +310,45 @@ function seasonal_paragraphs_entity_presave(EntityInterface $entity) {
   }
 }
 
-function seasonal_paragraphs_preprocess_paragraph(&$variables): void {
+/**
+ * This function is invoked by global template_process() and therefore
+ * available in all templates. Do not use for variables that might
+ * change within a request (due caching).
+ */
+function seasonal_paragraphs_template_preprocess_default_variables_alter(array &$variables): void {
+  $variables['season'] = \Drupal::service('seasonal_paragraphs.season')->getCurrentSeason();
+}
+
+function seasonal_paragraphs_preprocess_html(array &$variables): void {
+  $seasonService = \Drupal::service('seasonal_paragraphs.season');
+  $class = "season-" . $seasonService->getCurrentSeason();
+  if ($variables['html_attributes'] instanceof Attribute) {
+    $variables['html_attributes']->addClass($class);
+  }
+  else {
+    $variables['html_attributes']['class'][] = $class;
+  }
+  $variables['#cache']['tags'] = Cache::mergeTags($variables['#cache']['tags'] ?? [], $seasonService->getCacheTags());
+}
+
+function seasonal_paragraphs_preprocess_paragraph(array &$variables): void {
   $paragraph = $variables['paragraph'];
   if (!$paragraph->hasField(Season::FIELDNAME) || $paragraph->get(Season::FIELDNAME)->isEmpty()) {
     return;
   }
   $variables['attributes']['class'][] = "paragraph--season--{$paragraph->get(Season::FIELDNAME)->value}";
+}
+
+/**
+ * Inject season context into twig_field field widgets.
+ */
+function seasonal_paragraphs_twig_field_widget_variable_alter(array &$options, $alter_context) {
+  $options['Global']['season'] = 'season';
+}
+
+/**
+ * Inject season context into twig_field field templates.
+ */
+function seasonal_paragraphs_twig_field_formatter_variable_alter(array &$options, $alter_context) {
+  $options['season'] = \Drupal::service('seasonal_paragraphs.season')->getCurrentSeason();
 }
