@@ -1,13 +1,32 @@
-system.site:
+seasonal_paragraphs.settings:
   type: config_object
+  label: 'Seasonal paragraphs configurattion'
   mapping:
-    season:
-      type: mapping
+    summer_season:
       label: 'Summer season'
+      type: mapping
       mapping:
         from:
           type: string
-          label: 'Summer season start'
+          label: 'Start'
+          constraints:
+            Regex:
+              pattern: '/\d{4}-\d{2}-\d{2}/'
+              message: '%value is not valid. Enter a date in format YYYY-MM-DD'
         to:
           type: string
-          label: 'Summer season end'
+          label: 'End'
+          constraints:
+            Regex:
+              pattern: '/\d{4}-\d{2}-\d{2}/'
+              message: '%value is not valid. Enter a date in format YYYY-MM-DD'
+    entity_field_sanity_check:
+      label: 'Fields to check for content in all seasons'
+      type: sequence
+      sequence:
+        type: string
+        label: 'Field machine name using pattern entity_type:field_name'
+        constraints:
+          Regex:
+            pattern: '/[a-z0-9_]+:[a-z0-9_]+/'
+            message: '%value is not valid. Enter a machine name using the pattern entity_type:field_name'

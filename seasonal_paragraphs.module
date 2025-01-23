@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 use Drupal\block\Entity\Block;
 use Drupal\block_content\Entity\BlockContent;
 use Drupal\block_content\Plugin\Block\BlockContentBlock;
 use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Entity\EntityInterface;
@@ -16,6 +19,30 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Template\Attribute;
 use Drupal\paragraphs\Entity\Paragraph;
 use Drupal\seasonal_paragraphs\Season;
+
+/**
+ * Move all configuration to seasonal_paragraphs.settings
+ */
+function seasonal_paragraphs_update_10001(array &$sandbox): ?string {
+  $oldSystemConfig = \Drupal::configFactory()->getEditable('system.site');
+  if (!empty($oldSystemConfig->get('summer_season'))) {
+    $newConfig = \Drupal::configFactory()->getEditable('seasonal_paragraphs.settings');
+    $newConfig->set('summer_season.from', $oldSystemConfig->get('summer_season.from'));
+    $newConfig->set('summer_season.to', $oldSystemConfig->get('summer_season.to'));
+    $newConfig->save();
+    $oldSystemConfig->clear('summer_season');
+    $oldSystemConfig->save();
+  }
+
+  $oldModuleConfig = \Drupal::configFactory()->getEditable('seasonal_paragraphs.config');
+  if (!empty($oldModuleConfig->get('summer_season'))) {
+    $newConfig = \Drupal::configFactory()->getEditable('seasonal_paragraphs.settings');
+    $newConfig->set('entity_field_sanity_check', $oldModuleConfig->get('entity_field_sanity_check'));
+    $newConfig->save();
+    $oldModuleConfig->delete();
+  }
+  return NULL;
+}
 
 /**
  * Implements hook_entity_base_field_info().
@@ -53,12 +80,6 @@ function seasonal_paragraphs_entity_base_field_info(EntityTypeInterface $entity_
 /**
  * Returns the allowed values for seasonal visibility.
  *
- * @param \Drupal\Core\Field\FieldStorageDefinitionInterface $definition
- * @param \Drupal\Core\Entity\FieldableEntityInterface|null $entity
- * @param bool $cacheable
- *
- * @return array
- *
  * @see callback_allowed_values_function()
  */
 function seasonal_paragraphs_allowed_values(FieldStorageDefinitionInterface $definition, FieldableEntityInterface $entity = NULL, bool &$cacheable = TRUE): array {
@@ -70,7 +91,7 @@ function seasonal_paragraphs_allowed_values(FieldStorageDefinitionInterface $def
 /**
  * Alter the label of "_none" value for seasonal visibility.
  */
-function seasonal_paragraphs_options_list_alter(array &$options, array $context) {
+function seasonal_paragraphs_options_list_alter(array &$options, array $context): void {
   if ($context['fieldDefinition']->getName() !== Season::FIELDNAME) {
     return;
   }
@@ -81,7 +102,10 @@ function seasonal_paragraphs_options_list_alter(array &$options, array $context)
   }
 }
 
-function seasonal_paragraphs_field_widget_complete_form_alter(&$field_widget_complete_form, FormStateInterface $form_state, $context) {
+/**
+ * Makes the season setting a oneline switch in the UI.
+ */
+function seasonal_paragraphs_field_widget_complete_form_alter(&$field_widget_complete_form, FormStateInterface $form_state, $context): void {
   if ($context['items']?->getName() == Season::FIELDNAME &&
     isset($field_widget_complete_form['widget']['#title'])
   ) {
@@ -92,8 +116,7 @@ function seasonal_paragraphs_field_widget_complete_form_alter(&$field_widget_com
 /**
  * Implements hook_form_alter() for system_site_information_settings.
  */
-function seasonal_paragraphs_form_system_site_information_settings_alter(&$form, $form_state, $form_id) {
-  $config = \Drupal::configFactory()->getEditable('system.site');
+function seasonal_paragraphs_form_system_site_information_settings_alter(&$form, $form_state, $form_id): void {
   $form['summer_season'] = [
     '#type' => 'details',
     '#title' => t('Summer season'),
@@ -107,24 +130,16 @@ function seasonal_paragraphs_form_system_site_information_settings_alter(&$form,
     ]
   ];
   $form['summer_season']['inline_container']['from'] = [
-    '#type' => 'datetime',
+    '#type' => 'date',
     '#title' => t('Start date'),
-    '#default_value' => new DrupalDateTime($config->get('summer_season.from') ?? '2000-04-01', 'Europe/Vienna'),
-    '#date_date_element' => 'date',
-    '#date_time_element' => 'none',
-    '#date_timezone' => 'Europe/Vienna',
+    '#config_target' => 'seasonal_paragraphs.settings:summer_season.from',
     '#required' => TRUE,
-    '#parents' => ['summer_season', 'from'],
   ];
   $form['summer_season']['inline_container']['to'] = [
-    '#type' => 'datetime',
+    '#type' => 'date',
     '#title' => t('End date'),
-    '#default_value' => new DrupalDateTime($config->get('summer_season.to') ?? '2000-09-30', 'Europe/Vienna'),
-    '#date_date_element' => 'date',
-    '#date_time_element' => 'none',
-    '#date_timezone' => 'Europe/Vienna',
+    '#config_target' => 'seasonal_paragraphs.settings:summer_season.to',
     '#required' => TRUE,
-    '#parents' => ['summer_season', 'to'],
   ];
   $form['summer_season']['help'] = [
     '#type' => 'inline_template',
@@ -135,69 +150,60 @@ function seasonal_paragraphs_form_system_site_information_settings_alter(&$form,
   ];
 
   $form['#validate'][] = 'seasonal_paragraphs_site_settings_validate';
-  $form['#submit'][] = 'seasonal_paragraphs_site_settings_submit';
-}
-
-/**
- * Stores start and end date for a yearly recurring summer season to system.site config settings.
- *
- * @param $form
- * @param \Drupal\Core\Form\FormStateInterface $form_state
- *
- * @return void
- */
-function seasonal_paragraphs_site_settings_submit(&$form, FormStateInterface $form_state ): void {
-  \Drupal::service('config.factory')
-    ->getEditable('system.site')
-    ->set('summer_season.from', $form_state->getValue(['summer_season', 'from'])->format('Y-m-d'))
-    ->set('summer_season.to', $form_state->getValue(['summer_season', 'to'])->format('Y-m-d'))
-    ->save();
 }
 
 /**
  * Validates start and end date for a yearly recurring summer season.
- *
- * @param $form
- * @param \Drupal\Core\Form\FormStateInterface $form_state
- *
- * @return void
  */
 function seasonal_paragraphs_site_settings_validate(&$form, FormStateInterface $form_state ): void {
-  $from = $form_state->getValue(['summer_season', 'from']);
-  $to = $form_state->getValue(['summer_season', 'to']);
+  $from = $form_state->getValue(['summer_season', 'inline_container', 'from']);
+  $to = $form_state->getValue(['summer_season', 'inline_container', 'to']);
   if (empty($from)) {
-    $form_state->setErrorByName('summer_season][from', t('Summer season start must not be empty.'));
+    $form_state->setErrorByName(
+      'summer_season][inline_container][from',
+      t('Summer season start must not be empty.')
+    );
   }
   if (empty($to)) {
-    $form_state->setErrorByName('summer_season][to', t('Summer season end must not be empty.'));
+    $form_state->setErrorByName(
+      'summer_season][inline_container][to',
+      t('Summer season end must not be empty.')
+    );
+  }
+  if (!empty($form_state->getErrors())) {
+    return;
   }
 
-  if ($from >= $to) {
-    $form_state->setErrorByName('summer_season', t('Summer season end must be after summer season start.'));
+  $fromDate = \DateTime::createFromFormat('Y-m-d', $from);
+  if (empty($fromDate) || $fromDate->format('Y-m-d') != $from) {
+    $form_state->setErrorByName(
+      'summer_season][inline_container][from',
+      t('Summer season start must be a date in YYYY-MM-DD format.')
+    );
   }
-  if ($from->format('Y') !== $to->format('Y')) {
-    $form_state->setErrorByName('summer_season', t('Summer seasons must start and end in the same year.'));
+  $toDate = \DateTime::createFromFormat('Y-m-d', $to);
+  if (empty($toDate) || $toDate->format('Y-m-d') != $to) {
+    $form_state->setErrorByName(
+      'summer_season][inline_container][to',
+      t('Summer season end must be a date in YYYY-MM-DD format.')
+    );
   }
-}
+  if (!empty($form_state->getErrors())) {
+    return;
+  }
 
-/**
- * Implements hook_install().
- */
-function seasonal_paragraphs_install(): void{
-  \Drupal::service('config.factory')
-    ->getEditable('system.site')
-    ->set('summer_season.from', '2000-04-01')
-    ->set('summer_season.to', '2000-09-30')
-    ->save(TRUE);
-}
-
-/**
- * Implements hook_uninstall().
- */
-function seasonal_paragraphs_uninstall(): void{
-  $config = \Drupal::configFactory()->getEditable('system.site');
-  $config->clear('summer_season');
-  $config->save(TRUE);
+  if ($fromDate >= $toDate) {
+    $form_state->setErrorByName(
+      'summer_season',
+      t('Summer season end must be after summer season start.')
+    );
+  }
+  if ($fromDate->format('Y') != $toDate->format('Y')) {
+    $form_state->setErrorByName(
+      'summer_season',
+      t('Summer seasons must start and end in the same year.')
+    );
+  }
 }
 
 /**
@@ -209,11 +215,11 @@ function seasonal_paragraphs_cron(): void {
   $today = new \DateTime();
   $today->setTime(0,0,0,0);
 
-  $config = \Drupal::configFactory()->get('system.site');
+  $config = \Drupal::configFactory()->get('seasonal_paragraphs.settings');
   $from = \DateTime::createFromFormat('!Y-m-d', $config->get('summer_season.from'));
-  $from->setDate($today->format('Y'), $from->format('m'), $from->format('d'));
+  $from->setDate((int) $today->format('Y'), (int) $from->format('m'), (int) $from->format('d'));
   $to = \DateTime::createFromFormat('!Y-m-d', $config->get('summer_season.to'));
-  $to->setDate($today->format('Y'), $to->format('m'), $to->format('d'));
+  $to->setDate((int) $today->format('Y'), (int) $to->format('m'), (int) $to->format('d'));
 
   if (
     ($today >= $from && $lastPurge < $from) ||
@@ -225,6 +231,9 @@ function seasonal_paragraphs_cron(): void {
 }
 
 
+/**
+ * Disables frontend rendering of off-season content.
+ */
 function seasonal_paragraphs_entity_build_defaults_alter(array &$build, EntityInterface $entity, $view_mode): void {
   if (!($entity instanceof Paragraph)) {
     return;
@@ -245,7 +254,7 @@ function seasonal_paragraphs_entity_build_defaults_alter(array &$build, EntityIn
   }
 }
 
-function seasonal_paragraphs_block_access(Block $block, $operation, AccountInterface $account) {
+function seasonal_paragraphs_block_access(Block $block, $operation, AccountInterface $account): AccessResultInterface {
   if ($operation !== 'view' || !($block->getPlugin() instanceof BlockContentBlock)) {
     return AccessResult::neutral();
   }
@@ -269,20 +278,18 @@ function seasonal_paragraphs_block_access(Block $block, $operation, AccountInter
 }
 
 /**
- * Implements hook_ENTITY_TYPE_presave().
- *
- * This is a soft sanity check, aiming to help editors.
+ * Soft sanity check, renders a UI warning when content is missing for one season.
  */
-function seasonal_paragraphs_entity_presave(EntityInterface $entity) {
+function seasonal_paragraphs_entity_presave(EntityInterface $entity): void {
   if (!($entity instanceof Paragraph)) {
     return;
   }
-  $fieldsToCheck = \Drupal::config('seasonal_paragraphs.config')->get('entity_field_sanity_check');
+  $fieldsToCheck = \Drupal::config('seasonal_paragraphs.settings')->get('entity_field_sanity_check');
   if (empty($fieldsToCheck)) {
     return;
   }
   foreach ($fieldsToCheck as $check) {
-    list($entityType, $fieldToCheck) = explode(':', $check);
+    [$entityType, $fieldToCheck] = explode(':', $check);
     /** * @var Node $entity */
     if ($entity->getEntityTypeId() != $entityType) {
       continue;
@@ -319,6 +326,9 @@ function seasonal_paragraphs_template_preprocess_default_variables_alter(array &
   $variables['season'] = \Drupal::service('seasonal_paragraphs.season')->getCurrentSeason();
 }
 
+/**
+ * Adds a season CSS class to the root HTML tag.
+ */
 function seasonal_paragraphs_preprocess_html(array &$variables): void {
   $seasonService = \Drupal::service('seasonal_paragraphs.season');
   $class = "season-" . $seasonService->getCurrentSeason();
@@ -331,6 +341,9 @@ function seasonal_paragraphs_preprocess_html(array &$variables): void {
   $variables['#cache']['tags'] = Cache::mergeTags($variables['#cache']['tags'] ?? [], $seasonService->getCacheTags());
 }
 
+/**
+ * Adds a season CSS class to paragraph entities.
+ */
 function seasonal_paragraphs_preprocess_paragraph(array &$variables): void {
   $paragraph = $variables['paragraph'];
   if (!$paragraph->hasField(Season::FIELDNAME) || $paragraph->get(Season::FIELDNAME)->isEmpty()) {
@@ -342,13 +355,13 @@ function seasonal_paragraphs_preprocess_paragraph(array &$variables): void {
 /**
  * Inject season context into twig_field field widgets.
  */
-function seasonal_paragraphs_twig_field_widget_variable_alter(array &$options, $alter_context) {
+function seasonal_paragraphs_twig_field_widget_variable_alter(array &$options, $alter_context): void {
   $options['Global']['season'] = 'season';
 }
 
 /**
  * Inject season context into twig_field field templates.
  */
-function seasonal_paragraphs_twig_field_formatter_variable_alter(array &$options, $alter_context) {
+function seasonal_paragraphs_twig_field_formatter_variable_alter(array &$options, $alter_context): void {
   $options['season'] = \Drupal::service('seasonal_paragraphs.season')->getCurrentSeason();
 }

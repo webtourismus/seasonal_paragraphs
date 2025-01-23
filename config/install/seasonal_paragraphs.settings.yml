@@ -1,0 +1,5 @@
+summer_season:
+  from: '2000-04-01'
+  to: '2000-09-30'
+entity_field_sanity_check:
+  - 'node:field_banner'

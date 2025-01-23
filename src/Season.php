@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\seasonal_paragraphs;
 
 use Drupal\Core\Cache\Cache;
@@ -60,7 +62,10 @@ class Season implements CacheableDependencyInterface {
       self::SUMMER => $this->t('only visible in summer'),
       self::WINTER => $this->t('only visible in winter'),
     ];
-    $this->moduleHandler->invokeAll('seasonal_paragraphs_alter_available_seasons', [&$options, $definition, $entity, &$cacheable]);
+    $this->moduleHandler->invokeAll(
+      'seasonal_paragraphs_alter_available_seasons',
+      [&$options, $definition, $entity, &$cacheable]
+    );
     return $options;
   }
 
@@ -70,12 +75,21 @@ class Season implements CacheableDependencyInterface {
    * @return string
    */
   public function getCurrentSeason(): string {
-    $config = $this->configFactory->get('system.site');
+    $config = $this->configFactory->get('seasonal_paragraphs.settings');
     $now = new \DateTime();
     $from = \DateTime::createFromFormat('!Y-m-d', $config->get('summer_season.from'));
-    $from->setDate($now->format('Y'), $from->format('m'), $from->format('d'));
+    $from->setDate(
+      (int) $now->format('Y'),
+      (int) $from->format('m'),
+      (int) $from->format('d')
+    );
     $to = \DateTime::createFromFormat('!Y-m-d', $config->get('summer_season.to'));
-    $to->setDate($now->format('Y'), $to->format('m'), $to->format('d'));
+    $to->setDate(
+      (int) $now->format('Y'),
+      (int) $to->format('m'),
+      (int) $to->format('d')
+    );
+    $to->setTime(23, 59, 50, 999);
     $season = self::WINTER;
     if ($now >= $from and $now < $to) {
       $season = self::SUMMER;
@@ -95,7 +109,7 @@ class Season implements CacheableDependencyInterface {
    * @inheritDoc
    */
   public function getCacheTags(): array {
-    $config = $this->configFactory->get('system.site');
+    $config = $this->configFactory->get('seasonal_paragraphs.settings');
     return Cache::mergeTags($config->getCacheTags(), self::getExpiringCacheTags());
   }
 
