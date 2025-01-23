@@ -1,0 +1,28 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Move all configuration to seasonal_paragraphs.settings
+ */
+function seasonal_paragraphs_update_10001(array &$sandbox): ?string {
+  $oldSystemConfig = \Drupal::configFactory()->getEditable('system.site');
+  if (!empty($oldSystemConfig->get('summer_season'))) {
+    $newConfig = \Drupal::configFactory()->getEditable('seasonal_paragraphs.settings');
+    $newConfig->set('summer_season.from', $oldSystemConfig->get('summer_season.from'));
+    $newConfig->set('summer_season.to', $oldSystemConfig->get('summer_season.to'));
+    $newConfig->save();
+    $oldSystemConfig->clear('summer_season');
+    $oldSystemConfig->save();
+  }
+
+  $oldModuleConfig = \Drupal::configFactory()->getEditable('seasonal_paragraphs.config');
+  if (!empty($oldModuleConfig->get('summer_season'))) {
+    $newConfig = \Drupal::configFactory()->getEditable('seasonal_paragraphs.settings');
+    $newConfig->set('entity_field_sanity_check', $oldModuleConfig->get('entity_field_sanity_check'));
+    $newConfig->save();
+    $oldModuleConfig->delete();
+  }
+  return NULL;
+}
+

@@ -3,7 +3,7 @@ type: module
 description: Allows editors to hide paragraphs and blocks based on summer/winter season.
 package: Paragraphs
 core_version_requirement: ^10.3 || ^11
-version: 1.4.0
+version: 1.4.1
 dependencies:
   - drupal:datetime
   - drupal:options

@@ -8,7 +8,6 @@ use Drupal\block_content\Plugin\Block\BlockContentBlock;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Cache\Cache;
-use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\FieldableEntityInterface;
@@ -19,30 +18,6 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Template\Attribute;
 use Drupal\paragraphs\Entity\Paragraph;
 use Drupal\seasonal_paragraphs\Season;
-
-/**
- * Move all configuration to seasonal_paragraphs.settings
- */
-function seasonal_paragraphs_update_10001(array &$sandbox): ?string {
-  $oldSystemConfig = \Drupal::configFactory()->getEditable('system.site');
-  if (!empty($oldSystemConfig->get('summer_season'))) {
-    $newConfig = \Drupal::configFactory()->getEditable('seasonal_paragraphs.settings');
-    $newConfig->set('summer_season.from', $oldSystemConfig->get('summer_season.from'));
-    $newConfig->set('summer_season.to', $oldSystemConfig->get('summer_season.to'));
-    $newConfig->save();
-    $oldSystemConfig->clear('summer_season');
-    $oldSystemConfig->save();
-  }
-
-  $oldModuleConfig = \Drupal::configFactory()->getEditable('seasonal_paragraphs.config');
-  if (!empty($oldModuleConfig->get('summer_season'))) {
-    $newConfig = \Drupal::configFactory()->getEditable('seasonal_paragraphs.settings');
-    $newConfig->set('entity_field_sanity_check', $oldModuleConfig->get('entity_field_sanity_check'));
-    $newConfig->save();
-    $oldModuleConfig->delete();
-  }
-  return NULL;
-}
 
 /**
  * Implements hook_entity_base_field_info().
