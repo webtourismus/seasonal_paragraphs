@@ -186,7 +186,7 @@ function seasonal_paragraphs_site_settings_validate(&$form, FormStateInterface $
  */
 function seasonal_paragraphs_cron(): void {
   $lastPurge = \Drupal::state()->get('seasonal_paragraphs.last_purge', '0');
-  $lastPurge = \DateTime::createFromFormat('U', $lastPurge);
+  $lastPurge = \DateTime::createFromFormat('U',(string) $lastPurge);
   $today = new \DateTime();
   $today->setTime(0,0,0,0);
 
