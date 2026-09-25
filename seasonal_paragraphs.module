@@ -320,7 +320,11 @@ function seasonal_paragraphs_preprocess_html(array &$variables): void {
  * Adds a season CSS class to paragraph entities.
  */
 function seasonal_paragraphs_preprocess_paragraph(array &$variables): void {
-  $paragraph = $variables['paragraph'];
+  $paragraph = $variables['paragraph'] ?? $variables['elements']['#paragraph'] ?? NULL;
+  if (!$paragraph instanceof \Drupal\Core\Entity\ContentEntityInterface) {
+    return;
+  }
+  $variables['paragraph'] = $paragraph;
   if (!$paragraph->hasField(Season::FIELDNAME) || $paragraph->get(Season::FIELDNAME)->isEmpty()) {
     return;
   }
