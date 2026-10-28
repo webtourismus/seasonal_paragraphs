@@ -57,7 +57,7 @@ class Season implements CacheableDependencyInterface {
     $this->moduleHandler = $module_handler;
   }
 
-  public function allowedValuesCallback(FieldStorageDefinitionInterface $definition, FieldableEntityInterface $entity = NULL, bool &$cacheable = TRUE): array {
+  public function allowedValuesCallback(FieldStorageDefinitionInterface $definition, ?FieldableEntityInterface $entity = NULL, bool &$cacheable = TRUE): array {
     $options = [
       self::SUMMER => $this->t('only visible in summer'),
       self::WINTER => $this->t('only visible in winter'),

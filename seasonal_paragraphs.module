@@ -57,7 +57,7 @@ function seasonal_paragraphs_entity_base_field_info(EntityTypeInterface $entity_
  *
  * @see callback_allowed_values_function()
  */
-function seasonal_paragraphs_allowed_values(FieldStorageDefinitionInterface $definition, FieldableEntityInterface $entity = NULL, bool &$cacheable = TRUE): array {
+function seasonal_paragraphs_allowed_values(FieldStorageDefinitionInterface $definition, ?FieldableEntityInterface $entity = NULL, bool &$cacheable = TRUE): array {
   /** @var $season Season */
   $season = \Drupal::service('seasonal_paragraphs.season');
   return $season->allowedValuesCallback($definition, $entity, $cacheable);
